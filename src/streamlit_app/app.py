@@ -82,6 +82,10 @@ def main() -> None:
 
             if app.live_running:
                 try:
+                    # Always update timestamp when live mode is active, even before the API call
+                    current_time = datetime.datetime.now()
+                    st.info(f"🔄 Live mode tick at {current_time.strftime('%H:%M:%S')}")
+
                     with st.spinner("Live updating..."):
                         res2 = asyncio.run(run_live_tick(
                             blockscout_client=blockscout,
@@ -95,20 +99,27 @@ def main() -> None:
                         ))
                         app.events = res2.events
                         app.last_block = res2.cursor.last_block
-                        app.last_sync_time = datetime.datetime.now()
+                        app.last_sync_time = current_time
+                        st.success(f"✅ Live update completed at {current_time.strftime('%H:%M:%S')}")
                 except Exception as exc:
                     st.error(f"Live update failed: {exc}")
                     app.live_running = False
 
             # Auto-refresh for live mode
             if app.live_running:
+                # Add a small delay to let user see the updates before refresh
+                display_time_ms = min(2000, app.poll_interval_ms // 2)  # Show updates for 2s or half the interval
+                actual_refresh_ms = app.poll_interval_ms - display_time_ms
+
                 # Use JavaScript-based auto-refresh for live mode
                 components_html(
                     f"""
                     <script>
+                    console.log('Live mode: scheduling refresh in {actual_refresh_ms}ms');
                     setTimeout(function() {{
+                        console.log('Live mode: refreshing page now');
                         window.location.reload();
-                    }}, {app.poll_interval_ms});
+                    }}, {actual_refresh_ms});
                     </script>
                     """,
                     height=0,

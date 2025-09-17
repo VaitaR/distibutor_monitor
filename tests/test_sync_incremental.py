@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import eth_abi
 import pytest
@@ -36,8 +36,7 @@ def _mk_log(event_abi: dict[str, Any], block: int, idx: int, claimer: str, amoun
     }
 
 
-@pytest.mark.asyncio
-async def test_incremental_sync_with_overlap_confirmation_window() -> None:
+def test_incremental_sync_with_overlap_confirmation_window() -> None:
     event_abi = _make_claim_event_abi()
     claimer = to_checksum_address("0x000000000000000000000000000000000000dEaD")
     amount = 10**6
@@ -56,10 +55,10 @@ async def test_incremental_sync_with_overlap_confirmation_window() -> None:
         _mk_log(event_abi, 205, 0, claimer, amount),
     ]
 
-    mock_client = AsyncMock()
-    mock_client.fetch_logs_paginated = AsyncMock(return_value=new_logs)  # type: ignore[attr-defined]
+    mock_client = Mock()
+    mock_client.fetch_logs_paginated = Mock(return_value=new_logs)  # type: ignore[attr-defined]
 
-    res: SyncResult = await incremental_sync(
+    res: SyncResult = incremental_sync(
         blockscout_client=mock_client,
         address=to_checksum_address("0x2222222222222222222222222222222222222222"),
         event_abi=event_abi,

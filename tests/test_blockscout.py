@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import pytest
 
 from streamlit_app.datasources.blockscout import BlockscoutClient
 
 
-@pytest.mark.asyncio
-async def test_blockscout_pagination_mocked() -> None:
+def test_blockscout_pagination_mocked() -> None:
     client = BlockscoutClient(
         base_url="https://example/api",
         api_key=None,
@@ -40,9 +39,9 @@ async def test_blockscout_pagination_mocked() -> None:
     ]
 
     # Monkeypatch the internal page fetcher
-    client._get_logs_page = AsyncMock(side_effect=[page1, page2, []])  # type: ignore[attr-defined]
+    client._get_logs_page = Mock(side_effect=[page1, page2, []])  # type: ignore[attr-defined]
 
-    logs = await client.fetch_logs_paginated(
+    logs = client.fetch_logs_paginated(
         address="0x1111111111111111111111111111111111111111",
         topic0="0xabc",
         from_block=0,
@@ -53,8 +52,7 @@ async def test_blockscout_pagination_mocked() -> None:
     assert [log_item["transactionHash"] for log_item in logs] == ["0x11", "0x12"]
 
 
-@pytest.mark.asyncio
-async def test_blockscout_normalizes_hex_fields() -> None:
+def test_blockscout_normalizes_hex_fields() -> None:
     client = BlockscoutClient(
         base_url="https://example/api",
         api_key=None,
@@ -81,9 +79,9 @@ async def test_blockscout_normalizes_hex_fields() -> None:
             }
 
     # Monkeypatch HTTP get to return hex-like payload
-    client._client.get = AsyncMock(return_value=FakeResp())  # type: ignore[attr-defined]
+    client._client.get = Mock(return_value=FakeResp())  # type: ignore[attr-defined]
 
-    logs = await client._get_logs_page(
+    logs = client._get_logs_page(
         address="0x1111111111111111111111111111111111111111",
         topic0="0xabc",
         from_block=0,

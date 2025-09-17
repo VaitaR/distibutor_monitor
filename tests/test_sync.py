@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import eth_abi
 import pytest
@@ -22,8 +22,7 @@ def _make_claim_event_abi() -> dict[str, Any]:
     }
 
 
-@pytest.mark.asyncio
-async def test_initial_sync_paginates_decodes_and_dedups() -> None:
+def test_initial_sync_paginates_decodes_and_dedups() -> None:
     event_abi = _make_claim_event_abi()
     topic0 = event_abi_to_log_topic(event_abi).hex()
     claimer = to_checksum_address("0x000000000000000000000000000000000000dEaD")
@@ -44,10 +43,10 @@ async def test_initial_sync_paginates_decodes_and_dedups() -> None:
     page1: list[dict[str, Any]] = [mk_log(100, 0), mk_log(101, 0)]
     page2: list[dict[str, Any]] = [mk_log(102, 0)]
 
-    mock_client = AsyncMock()
-    mock_client.fetch_logs_paginated = AsyncMock(return_value=page1 + page2)  # type: ignore[attr-defined]
+    mock_client = Mock()
+    mock_client.fetch_logs_paginated = Mock(return_value=page1 + page2)  # type: ignore[attr-defined]
 
-    result: SyncResult = await initial_sync(
+    result: SyncResult = initial_sync(
         blockscout_client=mock_client,
         address=to_checksum_address("0x2222222222222222222222222222222222222222"),
         event_abi=event_abi,
@@ -62,7 +61,7 @@ async def test_initial_sync_paginates_decodes_and_dedups() -> None:
     assert result.aggregates.total_claimed_raw == 3 * amount
     assert result.aggregates.unique_claimers == 1
     # Idempotence: re-running should not double count
-    result2: SyncResult = await initial_sync(
+    result2: SyncResult = initial_sync(
         blockscout_client=mock_client,
         address=to_checksum_address("0x2222222222222222222222222222222222222222"),
         event_abi=event_abi,

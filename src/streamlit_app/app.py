@@ -140,33 +140,44 @@ def main() -> None:
                     st.error(f"Initial Sync failed: {exc}")
                     app.trigger_initial_sync = False
 
-            # Native Streamlit auto-refresh - simple and reliable
+            # Simple live mode with native Streamlit auto-refresh
             if app.live_running:
                 try:
                     current_time = datetime.datetime.now()
-                    st.info(f"🔄 Live mode active - updating at {current_time.strftime('%H:%M:%S')}")
+                    refresh_seconds = max(5, int(app.poll_interval_ms / 1000))
+                    
+                    # Check if we need to update
+                    should_update = (
+                        app.last_sync_time is None or 
+                        (current_time - app.last_sync_time).total_seconds() >= refresh_seconds
+                    )
+                    
+                    if should_update:
+                        with st.spinner("Updating..."):
+                            events, last_block, sync_time = fetch_data_cached(
+                                chain=app.chain,
+                                contract_address=app.contract_address,
+                                event_abi=event_abi,
+                                from_block=app.from_block,
+                                page_size=app.page_size,
+                                decimals=app.token_decimals,
+                                is_live=True,
+                                existing_events=app.events,
+                                confirmation_blocks=app.confirmation_blocks,
+                            )
 
-                    with st.spinner("Live updating..."):
-                        events, last_block, sync_time = fetch_data_cached(
-                            chain=app.chain,
-                            contract_address=app.contract_address,
-                            event_abi=event_abi,
-                            from_block=app.from_block,
-                            page_size=app.page_size,
-                            decimals=app.token_decimals,
-                            is_live=True,
-                            existing_events=app.events,
-                            confirmation_blocks=app.confirmation_blocks,
-                        )
+                            # Update state
+                            old_count = len(app.events)
+                            app.events = events
+                            app.last_block = last_block
+                            app.last_sync_time = sync_time
+                            new_count = len(events)
+                            
+                            # Show result if new events found
+                            if new_count > old_count:
+                                st.success(f"Found {new_count - old_count} new events!")
 
-                        app.events = events
-                        app.last_block = last_block
-                        app.last_sync_time = sync_time
-
-                        refresh_seconds = max(1, int(app.poll_interval_ms / 1000))
-                        st.success(f"✅ Live update completed - next update in {refresh_seconds}s")
-
-                    # Native Streamlit auto-refresh: sleep + rerun
+                    # Auto-refresh: wait and rerun
                     time.sleep(refresh_seconds)
                     st.rerun()
 

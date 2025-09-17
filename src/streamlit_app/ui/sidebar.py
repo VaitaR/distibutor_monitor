@@ -20,7 +20,9 @@ def render_sidebar() -> None:
 
         app.page_size = st.number_input("Page size", min_value=1, step=1, value=app.page_size or PAGE_SIZE_DEFAULT)
         app.rate_limit_qps = st.number_input("API QPS", min_value=0.0, step=0.5, value=float(app.rate_limit_qps or API_QPS))
-        app.poll_interval_ms = st.number_input("Poll interval (ms)", min_value=500, step=500, value=app.poll_interval_ms)
+        
+        app.poll_interval_ms = st.number_input("Refresh interval (seconds)", min_value=5, step=1, value=int(app.poll_interval_ms/1000), help="How often to check for new data") * 1000
+        
         app.token_decimals = st.number_input("Token decimals", min_value=0, max_value=30, step=1, value=app.token_decimals, help="Number of decimal places for the token (18 for most ERC20 tokens)")
 
         st.divider()
@@ -40,6 +42,7 @@ def render_sidebar() -> None:
             app.events = []
             app.last_block = 0
             app.live_running = False
+            app.last_sync_time = None
 
         if start:
             app.trigger_initial_sync = True

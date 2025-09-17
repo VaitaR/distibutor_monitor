@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import eth_abi
 import pytest
@@ -41,8 +41,7 @@ def _mk_log(event_abi: dict[str, Any], block: int, idx: int, claimer: str, amoun
     }
 
 
-@pytest.mark.asyncio
-async def test_live_tick_increments_with_latest_block() -> None:
+def test_live_tick_increments_with_latest_block() -> None:
     event_abi = _make_claim_event_abi()
     claimer = to_checksum_address("0x000000000000000000000000000000000000dEaD")
     amount = 10**6
@@ -52,10 +51,10 @@ async def test_live_tick_increments_with_latest_block() -> None:
         _mk_log(event_abi, 1000, 0, claimer, amount),
     ]
 
-    mock_blockscout = AsyncMock()
-    mock_blockscout.fetch_logs_paginated = AsyncMock(return_value=new_logs)  # type: ignore[attr-defined]
+    mock_blockscout = Mock()
+    mock_blockscout.fetch_logs_paginated = Mock(return_value=new_logs)  # type: ignore[attr-defined]
 
-    res = await incremental_sync(
+    res = incremental_sync(
         blockscout_client=mock_blockscout,
         address=to_checksum_address("0x2222222222222222222222222222222222222222"),
         event_abi=event_abi,
@@ -107,7 +106,7 @@ async def test_e2e_blockscout_decode_with_real_abi() -> None:
     print(f"Blockscout URL: {cfg['blockscout_api']}")
 
     # First, get ALL logs for this contract to see what events exist
-    all_logs = await client.fetch_logs_paginated(
+    all_logs = client.fetch_logs_paginated(
         address=contract,
         topic0="",  # Empty string to get all events
         from_block=from_block,
@@ -124,7 +123,7 @@ async def test_e2e_blockscout_decode_with_real_abi() -> None:
     print(f"Unique topic0s found: {list(unique_topics)}")
 
     # Now search for specific Claimed events
-    logs = await client.fetch_logs_paginated(
+    logs = client.fetch_logs_paginated(
         address=contract,
         topic0=topic0,
         from_block=from_block,

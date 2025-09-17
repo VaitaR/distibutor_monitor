@@ -76,7 +76,7 @@ def decode_logs(events_abi: Iterable[dict[str, Any]], logs: Iterable[dict[str, A
             non_indexed_values = list(abi_decode(non_indexed_types, data_bytes))
 
         # Extract indexed values from topics (skip topic0)
-        topics: list[str] = list(log.get("topics", []))
+        # topics already defined above, reuse it
         indexed_values: list[Any] = []
         for i, indexed_input in enumerate(indexed_inputs):
             topic_index = i + 1  # Skip topic0
@@ -111,7 +111,7 @@ def decode_logs(events_abi: Iterable[dict[str, Any]], logs: Iterable[dict[str, A
             name = inp.get("name", "").lower()
             if typ == "address" and claimer is None and ("user" in name or "account" in name or "claimer" in name):
                 claimer = to_checksum_address(str(val))
-            elif typ.startswith("uint") and amount_raw is None and "amount" in name:
+            elif typ and typ.startswith("uint") and amount_raw is None and "amount" in name:
                 amount_raw = min(int(val), 2**63 - 1) if isinstance(val, int) else 0
 
         # Check non-indexed parameters
@@ -121,7 +121,7 @@ def decode_logs(events_abi: Iterable[dict[str, Any]], logs: Iterable[dict[str, A
             name = inp.get("name", "").lower()
             if typ == "address" and claimer is None and ("user" in name or "account" in name or "claimer" in name):
                 claimer = to_checksum_address(str(val))
-            elif typ.startswith("uint") and amount_raw is None and "amount" in name:
+            elif typ and typ.startswith("uint") and amount_raw is None and "amount" in name:
                 amount_raw = min(int(val), 2**63 - 1) if isinstance(val, int) else 0
 
         decoded.append(

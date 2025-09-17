@@ -46,23 +46,13 @@ async def run_live_tick(
     latest_block: int = await rpc_client.get_latest_block_number()
     if latest_block <= 0:
         # If we cannot get latest, do a no-op tick to avoid clearing data
-        return SyncResult(events=list(existing_events), aggregates=(await initial_sync(  # type: ignore[no-any-return]
-            blockscout_client=blockscout_client,
-            address=address,
-            event_abi=event_abi,
-            from_block=0,
-            to_block=0,
-            page_size=page_size,
-            decimals=decimals,
-        )).aggregates, cursor=(await initial_sync(
-            blockscout_client=blockscout_client,
-            address=address,
-            event_abi=event_abi,
-            from_block=0,
-            to_block=0,
-            page_size=page_size,
-            decimals=decimals,
-        )).cursor)  # type: ignore[no-any-return]
+        from .claims_aggregate import aggregate_claims
+        from .sync import Cursor
+
+        events_list = list(existing_events)
+        aggregates = aggregate_claims(events_list, decimals=decimals)
+        last_block = max((int(e.get("block_number", 0)) for e in events_list), default=0)
+        return SyncResult(events=events_list, aggregates=aggregates, cursor=Cursor(last_block=last_block))
     return await incremental_sync(
         blockscout_client=blockscout_client,
         address=address,

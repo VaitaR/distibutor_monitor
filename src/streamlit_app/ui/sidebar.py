@@ -40,12 +40,15 @@ def render_sidebar() -> None:
             app.events = []
             app.last_block = 0
             app.live_running = False
+            app.next_live_update = None
 
         if start:
             app.trigger_initial_sync = True
         if start_live:
             app.live_running = True
+            app.next_live_update = None  # Reset timer when starting
         if stop_live:
             app.live_running = False
+            app.next_live_update = None  # Clear timer when stopping
 
 

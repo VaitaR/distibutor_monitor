@@ -81,49 +81,65 @@ def main() -> None:
                     app.trigger_initial_sync = False
 
             if app.live_running:
-                try:
-                    # Always update timestamp when live mode is active, even before the API call
-                    current_time = datetime.datetime.now()
-                    st.info(f"🔄 Live mode tick at {current_time.strftime('%H:%M:%S')}")
+                current_time = datetime.datetime.now()
 
-                    with st.spinner("Live updating..."):
-                        res2 = asyncio.run(run_live_tick(
-                            blockscout_client=blockscout,
-                            rpc_client=rpc,
-                            address=app.contract_address,
-                            event_abi=event_abi,
-                            existing_events=app.events,
-                            confirmation_blocks=app.confirmation_blocks,
-                            page_size=app.page_size,
-                            decimals=app.token_decimals,
-                        ))
-                        app.events = res2.events
-                        app.last_block = res2.cursor.last_block
-                        app.last_sync_time = current_time
-                        st.success(f"✅ Live update completed at {current_time.strftime('%H:%M:%S')}")
-                except Exception as exc:
-                    st.error(f"Live update failed: {exc}")
-                    app.live_running = False
-
-            # Auto-refresh for live mode
-            if app.live_running:
-                # Add a small delay to let user see the updates before refresh
-                display_time_ms = min(2000, app.poll_interval_ms // 2)  # Show updates for 2s or half the interval
-                actual_refresh_ms = app.poll_interval_ms - display_time_ms
-
-                # Use JavaScript-based auto-refresh for live mode
-                components_html(
-                    f"""
-                    <script>
-                    console.log('Live mode: scheduling refresh in {actual_refresh_ms}ms');
-                    setTimeout(function() {{
-                        console.log('Live mode: refreshing page now');
-                        window.location.reload();
-                    }}, {actual_refresh_ms});
-                    </script>
-                    """,
-                    height=0,
+                # Check if it's time for the next live update
+                should_update = (
+                    app.next_live_update is None or
+                    current_time >= app.next_live_update
                 )
+
+                if should_update:
+                    try:
+                        st.info(f"🔄 Live mode tick at {current_time.strftime('%H:%M:%S')}")
+
+                        with st.spinner("Live updating..."):
+                            res2 = asyncio.run(run_live_tick(
+                                blockscout_client=blockscout,
+                                rpc_client=rpc,
+                                address=app.contract_address,
+                                event_abi=event_abi,
+                                existing_events=app.events,
+                                confirmation_blocks=app.confirmation_blocks,
+                                page_size=app.page_size,
+                                decimals=app.token_decimals,
+                            ))
+                            app.events = res2.events
+                            app.last_block = res2.cursor.last_block
+                            app.last_sync_time = current_time
+
+                            # Schedule next update
+                            refresh_seconds = max(1, int(app.poll_interval_ms / 1000))
+                            app.next_live_update = current_time + datetime.timedelta(seconds=refresh_seconds)
+
+                            st.success(f"✅ Live update completed at {current_time.strftime('%H:%M:%S')}")
+                            st.info(f"⏱️ Next update at {app.next_live_update.strftime('%H:%M:%S')}")
+                    except Exception as exc:
+                        st.error(f"Live update failed: {exc}")
+                        app.live_running = False
+                        app.next_live_update = None
+                else:
+                    # Show countdown to next update
+                    if app.next_live_update:
+                        remaining = (app.next_live_update - current_time).total_seconds()
+                        if remaining > 0:
+                            st.info(f"⏱️ Next update in {int(remaining)} seconds ({app.next_live_update.strftime('%H:%M:%S')})")
+
+                # Auto-refresh using JavaScript for live mode
+                if app.live_running:
+                    refresh_ms = max(1000, app.poll_interval_ms)
+                    components_html(
+                        f"""
+                        <script>
+                        console.log('Live mode: scheduling refresh in {refresh_ms}ms');
+                        setTimeout(function() {{
+                            console.log('Live mode: refreshing page now');
+                            window.location.reload();
+                        }}, {refresh_ms});
+                        </script>
+                        """,
+                        height=0,
+                    )
 
     render_main()
 

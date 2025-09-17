@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 import streamlit as st
-from streamlit.components.v1 import html as components_html
 
 # Add src directory to Python path for imports
 SRC_DIR = str(Path(__file__).resolve().parents[1])
@@ -24,6 +23,20 @@ from streamlit_app.ui.views import render_main
 from streamlit_app.utils.secrets import load_secrets_from_dotenv
 
 
+# Cache heavy resources (connections, clients)
+@st.cache_resource
+def get_clients(chain: str) -> tuple[BlockscoutClient, RpcClient]:
+    """Get cached Blockscout and RPC clients."""
+    network_config = resolve_network_config(chain)
+    blockscout = BlockscoutClient(
+        base_url=network_config["blockscout_api"],
+        api_key=None,
+        rate_limit_qps=3.0,  # Will be overridden by user setting
+    )
+    rpc = RpcClient(base_url=network_config["ankr_rpc"])
+    return blockscout, rpc
+
+
 def main() -> None:
     load_secrets_from_dotenv()
     st.set_page_config(page_title="Distributor Monitor", layout="wide")
@@ -31,7 +44,6 @@ def main() -> None:
     render_sidebar()
 
     app = ensure_session_state(st)
-    cfg = resolve_network_config(app.chain)
 
     # Upload ABI and select events
     abi_file = st.sidebar.file_uploader("Upload ABI.json", type=["json"])
@@ -51,9 +63,10 @@ def main() -> None:
             # For now, use the first selected event ABI
             event_abi = selected_events[0]
 
-            # Clients
-            blockscout = BlockscoutClient(base_url=cfg["blockscout_api"], api_key=None, rate_limit_qps=app.rate_limit_qps)
-            rpc = RpcClient(base_url=cfg["ankr_rpc"])
+            # Clients (cached for better performance)
+            blockscout, rpc = get_clients(app.chain)
+            # Update rate limit from user settings
+            blockscout._qps = app.rate_limit_qps
 
             if app.trigger_initial_sync:
                 try:
@@ -80,66 +93,38 @@ def main() -> None:
                     st.error(f"Initial Sync failed: {exc}")
                     app.trigger_initial_sync = False
 
+            # Native Streamlit auto-refresh approach (much simpler and more reliable)
             if app.live_running:
-                current_time = datetime.datetime.now()
+                try:
+                    current_time = datetime.datetime.now()
+                    st.info(f"🔄 Live mode active - updating at {current_time.strftime('%H:%M:%S')}")
 
-                # Check if it's time for the next live update
-                should_update = (
-                    app.next_live_update is None or
-                    current_time >= app.next_live_update
-                )
+                    with st.spinner("Live updating..."):
+                        res2 = asyncio.run(run_live_tick(
+                            blockscout_client=blockscout,
+                            rpc_client=rpc,
+                            address=app.contract_address,
+                            event_abi=event_abi,
+                            existing_events=app.events,
+                            confirmation_blocks=app.confirmation_blocks,
+                            page_size=app.page_size,
+                            decimals=app.token_decimals,
+                        ))
+                        app.events = res2.events
+                        app.last_block = res2.cursor.last_block
+                        app.last_sync_time = current_time
 
-                if should_update:
-                    try:
-                        st.info(f"🔄 Live mode tick at {current_time.strftime('%H:%M:%S')}")
+                        refresh_seconds = max(1, int(app.poll_interval_ms / 1000))
+                        st.success(f"✅ Live update completed - next update in {refresh_seconds}s")
 
-                        with st.spinner("Live updating..."):
-                            res2 = asyncio.run(run_live_tick(
-                                blockscout_client=blockscout,
-                                rpc_client=rpc,
-                                address=app.contract_address,
-                                event_abi=event_abi,
-                                existing_events=app.events,
-                                confirmation_blocks=app.confirmation_blocks,
-                                page_size=app.page_size,
-                                decimals=app.token_decimals,
-                            ))
-                            app.events = res2.events
-                            app.last_block = res2.cursor.last_block
-                            app.last_sync_time = current_time
+                    # Native Streamlit auto-refresh: sleep + rerun
+                    import time
+                    time.sleep(refresh_seconds)
+                    st.rerun()
 
-                            # Schedule next update
-                            refresh_seconds = max(1, int(app.poll_interval_ms / 1000))
-                            app.next_live_update = current_time + datetime.timedelta(seconds=refresh_seconds)
-
-                            st.success(f"✅ Live update completed at {current_time.strftime('%H:%M:%S')}")
-                            st.info(f"⏱️ Next update at {app.next_live_update.strftime('%H:%M:%S')}")
-                    except Exception as exc:
-                        st.error(f"Live update failed: {exc}")
-                        app.live_running = False
-                        app.next_live_update = None
-                else:
-                    # Show countdown to next update
-                    if app.next_live_update:
-                        remaining = (app.next_live_update - current_time).total_seconds()
-                        if remaining > 0:
-                            st.info(f"⏱️ Next update in {int(remaining)} seconds ({app.next_live_update.strftime('%H:%M:%S')})")
-
-                # Auto-refresh using JavaScript for live mode
-                if app.live_running:
-                    refresh_ms = max(1000, app.poll_interval_ms)
-                    components_html(
-                        f"""
-                        <script>
-                        console.log('Live mode: scheduling refresh in {refresh_ms}ms');
-                        setTimeout(function() {{
-                            console.log('Live mode: refreshing page now');
-                            window.location.reload();
-                        }}, {refresh_ms});
-                        </script>
-                        """,
-                        height=0,
-                    )
+                except Exception as exc:
+                    st.error(f"Live update failed: {exc}")
+                    app.live_running = False
 
     render_main()
 

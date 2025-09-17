@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import sys
 from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
@@ -35,6 +36,26 @@ def get_clients(chain: str) -> tuple[BlockscoutClient, RpcClient]:
     )
     rpc = RpcClient(base_url=network_config["ankr_rpc"])
     return blockscout, rpc
+
+
+def safe_asyncio_run(coro_func: Any, *args: Any, **kwargs: Any) -> Any:
+    """Safely run async function, handling event loop issues."""
+    def run_coro() -> Any:
+        return asyncio.run(coro_func(*args, **kwargs))
+
+    try:
+        return run_coro()
+    except RuntimeError as e:
+        if "Event loop is closed" in str(e) or "no running event loop" in str(e):
+            # Create a fresh event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return run_coro()
+            finally:
+                loop.close()
+        else:
+            raise
 
 
 def main() -> None:
@@ -72,7 +93,8 @@ def main() -> None:
                 try:
                     with st.spinner("Running initial sync..."):
                         st.info(f"Syncing from block {app.from_block} for contract {app.contract_address}")
-                        res = asyncio.run(run_initial_sync(
+                        res = safe_asyncio_run(
+                            run_initial_sync,
                             blockscout_client=blockscout,
                             rpc_client=rpc,
                             address=app.contract_address,
@@ -80,7 +102,7 @@ def main() -> None:
                             from_block=app.from_block,
                             page_size=app.page_size,
                             decimals=app.token_decimals,
-                        ))
+                        )
                         app.events = res.events
                         app.last_block = res.cursor.last_block
                         app.last_sync_time = datetime.datetime.now()
@@ -93,14 +115,16 @@ def main() -> None:
                     st.error(f"Initial Sync failed: {exc}")
                     app.trigger_initial_sync = False
 
-            # Native Streamlit auto-refresh approach (much simpler and more reliable)
+            # Native Streamlit auto-refresh with safe asyncio handling
             if app.live_running:
                 try:
                     current_time = datetime.datetime.now()
                     st.info(f"🔄 Live mode active - updating at {current_time.strftime('%H:%M:%S')}")
 
                     with st.spinner("Live updating..."):
-                        res2 = asyncio.run(run_live_tick(
+                        # Use safe asyncio runner to handle event loop issues
+                        res2 = safe_asyncio_run(
+                            run_live_tick,
                             blockscout_client=blockscout,
                             rpc_client=rpc,
                             address=app.contract_address,
@@ -109,7 +133,8 @@ def main() -> None:
                             confirmation_blocks=app.confirmation_blocks,
                             page_size=app.page_size,
                             decimals=app.token_decimals,
-                        ))
+                        )
+
                         app.events = res2.events
                         app.last_block = res2.cursor.last_block
                         app.last_sync_time = current_time

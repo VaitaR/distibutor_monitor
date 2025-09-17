@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import sys
 from pathlib import Path
 
@@ -69,6 +70,7 @@ def main() -> None:
                         ))
                         app.events = res.events
                         app.last_block = res.cursor.last_block
+                        app.last_sync_time = datetime.datetime.now()
                         app.trigger_initial_sync = False
                         if not res.events:
                             st.warning(f"No events found from block {app.from_block}. Try a different block range or check the contract address.")
@@ -93,6 +95,7 @@ def main() -> None:
                         ))
                         app.events = res2.events
                         app.last_block = res2.cursor.last_block
+                        app.last_sync_time = datetime.datetime.now()
                 except Exception as exc:
                     st.error(f"Live update failed: {exc}")
                     app.live_running = False

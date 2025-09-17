@@ -13,35 +13,29 @@ def test_format_last_update_time_never() -> None:
     assert result == "Never"
 
 
-def test_format_last_update_time_seconds() -> None:
-    """Test formatting for recent updates (seconds)."""
+def test_format_last_update_time_absolute() -> None:
+    """Test formatting shows absolute timestamp."""
+    test_time = datetime.datetime(2024, 1, 15, 14, 30, 45)
+    result = _format_last_update_time(test_time)
+    assert result == "2024-01-15 14:30:45"
+
+
+def test_format_last_update_time_current() -> None:
+    """Test formatting with current time."""
     now = datetime.datetime.now()
-    recent = now - datetime.timedelta(seconds=30)
-    result = _format_last_update_time(recent)
-    assert "seconds ago" in result
-    assert "30" in result
+    result = _format_last_update_time(now)
+    expected = now.strftime("%Y-%m-%d %H:%M:%S")
+    assert result == expected
 
 
-def test_format_last_update_time_minutes() -> None:
-    """Test formatting for updates within the hour (minutes)."""
-    now = datetime.datetime.now()
-    recent = now - datetime.timedelta(minutes=15)
-    result = _format_last_update_time(recent)
-    assert "minutes ago" in result
-    assert "15" in result
+def test_format_last_update_time_different_formats() -> None:
+    """Test various timestamp formats."""
+    test_cases = [
+        (datetime.datetime(2025, 12, 31, 23, 59, 59), "2025-12-31 23:59:59"),
+        (datetime.datetime(2020, 1, 1, 0, 0, 0), "2020-01-01 00:00:00"),
+        (datetime.datetime(2024, 6, 15, 12, 30, 15), "2024-06-15 12:30:15"),
+    ]
 
-
-def test_format_last_update_time_hours() -> None:
-    """Test formatting for updates within the day (hours)."""
-    now = datetime.datetime.now()
-    recent = now - datetime.timedelta(hours=3)
-    result = _format_last_update_time(recent)
-    assert "hours ago" in result
-    assert "3" in result
-
-
-def test_format_last_update_time_days() -> None:
-    """Test formatting for old updates (full timestamp)."""
-    old_time = datetime.datetime(2024, 1, 1, 12, 0, 0)
-    result = _format_last_update_time(old_time)
-    assert "2024-01-01 12:00:00" == result
+    for test_time, expected in test_cases:
+        result = _format_last_update_time(test_time)
+        assert result == expected

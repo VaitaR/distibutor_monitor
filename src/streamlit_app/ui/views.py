@@ -13,21 +13,12 @@ from .state import ensure_session_state
 
 
 def _format_last_update_time(last_sync_time: datetime.datetime | None) -> str:
-    """Format the last sync time in a user-friendly way."""
+    """Format the last sync time as absolute time in user's timezone."""
     if last_sync_time is None:
         return "Never"
 
-    now = datetime.datetime.now()
-    diff = now - last_sync_time
-
-    if diff.total_seconds() < 60:
-        return f"{int(diff.total_seconds())} seconds ago"
-    elif diff.total_seconds() < 3600:
-        return f"{int(diff.total_seconds() // 60)} minutes ago"
-    elif diff.total_seconds() < 86400:
-        return f"{int(diff.total_seconds() // 3600)} hours ago"
-    else:
-        return last_sync_time.strftime("%Y-%m-%d %H:%M:%S")
+    # Format as readable timestamp in user's local timezone
+    return last_sync_time.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def render_main() -> None:
@@ -51,14 +42,7 @@ def render_main() -> None:
     if app.last_sync_time is None:
         st.info(f"📊 **Last Updated:** {last_update_text}")
     else:
-        # Show different colors based on how recent the update was
-        now = datetime.datetime.now()
-        if app.last_sync_time and (now - app.last_sync_time).total_seconds() < 300:  # Less than 5 minutes
-            st.success(f"🔄 **Last Updated:** {last_update_text}")
-        elif app.last_sync_time and (now - app.last_sync_time).total_seconds() < 1800:  # Less than 30 minutes
-            st.info(f"🔄 **Last Updated:** {last_update_text}")
-        else:
-            st.warning(f"⚠️ **Last Updated:** {last_update_text} - Data may be outdated")
+        st.info(f"🔄 **Last Updated:** {last_update_text}")
 
     # Cumulative chart
     series = build_cumulative_series(events, decimals=token_decimals)

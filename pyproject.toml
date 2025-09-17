@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "distributor-monitor"
+version = "0.1.0"
+description = "Streamlit app to monitor claim events and export snapshots"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "streamlit>=1.34",
+  "httpx>=0.27",
+  "eth-abi>=5.1",
+  "eth-utils>=4.0",
+  "pandas>=2.2",
+  "altair>=5.3",
+  "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.23",
+  "mypy>=1.11",
+  "ruff>=0.6",
+  "types-requests",
+  "types-setuptools",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q"
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = []
+mypy_path = "src"
+warn_unused_configs = true
+disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+module = ["streamlit", "streamlit.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["eth_utils", "eth_utils.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["eth_abi", "eth_abi.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["altair", "altair.*", "pandas", "pandas.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["eth_utils.applicants", "eth_utils.abi", "eth_utils.*"]
+ignore_missing_imports = true
+
+

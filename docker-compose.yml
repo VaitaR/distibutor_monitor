@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  distributor-monitor:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - ANKR_API_KEY=${ANKR_API_KEY:-}
+      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:-}
+    volumes:
+      - ./src:/app/src:ro
+      - ./abi_distributor.json:/app/abi_distributor.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Development service with hot reload
+  distributor-monitor-dev:
+    build: .
+    ports:
+      - "8502:8501"
+    environment:
+      - ANKR_API_KEY=${ANKR_API_KEY:-}
+      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:-}
+      - STREAMLIT_LOGGER_LEVEL=debug
+    volumes:
+      - ./src:/app/src
+      - ./abi_distributor.json:/app/abi_distributor.json
+      - ./tests:/app/tests
+    command: ["streamlit", "run", "src/streamlit_app/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.runOnSave=true"]
+    profiles:
+      - dev

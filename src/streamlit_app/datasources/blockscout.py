@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import asyncio
+import time
 from typing import Any
 
 import httpx
@@ -27,17 +27,18 @@ class BlockscoutClient:
         self._base_url: str = base_url.rstrip("/")
         self._api_key: str | None = api_key
         self._qps: float = rate_limit_qps
-        self._client: httpx.AsyncClient = httpx.AsyncClient(timeout=30.0)
+        self._client: httpx.Client = httpx.Client(timeout=30.0)  # Synchronous client
 
-    async def close(self) -> None:
-        await self._client.aclose()
+    def close(self) -> None:
+        self._client.close()
 
-    async def _throttle(self) -> None:
+    def _throttle(self) -> None:
+        """Rate limiting using synchronous sleep."""
         if self._qps <= 0:
             return
-        await asyncio.sleep(1.0 / self._qps)
+        time.sleep(1.0 / self._qps)
 
-    async def _get_logs_page(
+    def _get_logs_page(
         self,
         *,
         address: str,
@@ -47,6 +48,7 @@ class BlockscoutClient:
         page: int,
         offset: int,
     ) -> list[dict[str, Any]]:
+        """Get logs page synchronously."""
         params = {
             "module": "logs",
             "action": "getLogs",
@@ -63,8 +65,8 @@ class BlockscoutClient:
         if self._api_key:
             params["apikey"] = self._api_key
 
-        await self._throttle()
-        resp = await self._client.get(f"{self._base_url}", params=params)
+        self._throttle()  # Synchronous throttling
+        resp = self._client.get(f"{self._base_url}", params=params)
         resp.raise_for_status()
         data = resp.json()
         result = data.get("result")
@@ -86,7 +88,7 @@ class BlockscoutClient:
             )
         return out
 
-    async def fetch_logs_paginated(
+    def fetch_logs_paginated(
         self,
         *,
         address: str,
@@ -96,6 +98,7 @@ class BlockscoutClient:
         page_size: int,
         start_page: int = 1,
     ) -> list[dict[str, Any]]:
+        """Fetch logs with pagination synchronously."""
         page = start_page
         collected: list[dict[str, Any]] = []
         seen: set[tuple[str, int]] = set()
@@ -105,7 +108,7 @@ class BlockscoutClient:
             pages_scanned += 1
             if pages_scanned > max_pages:
                 break
-            logs = await self._get_logs_page(
+            logs = self._get_logs_page(  # Remove await
                 address=address,
                 topic0=topic0,
                 from_block=from_block,

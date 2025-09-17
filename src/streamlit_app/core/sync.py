@@ -22,7 +22,7 @@ class SyncResult:
     cursor: Cursor
 
 
-async def initial_sync(
+def initial_sync(
     *,
     blockscout_client: Any,
     address: str,
@@ -33,9 +33,10 @@ async def initial_sync(
     decimals: int,
     existing_events: Iterable[dict[str, Any]] | None = None,
 ) -> SyncResult:
+    """Synchronous initial sync."""
     topic0_raw: str = event_abi_to_log_topic(cast(Any, event_abi)).hex()
     topic0: str = "0x" + topic0_raw if not topic0_raw.startswith("0x") else topic0_raw
-    logs = await blockscout_client.fetch_logs_paginated(
+    logs = blockscout_client.fetch_logs_paginated(  # Remove await
         address=address,
         topic0=topic0,
         from_block=from_block,
@@ -50,7 +51,7 @@ async def initial_sync(
     return SyncResult(events=deduped, aggregates=aggregates, cursor=Cursor(last_block=last_block))
 
 
-async def incremental_sync(
+def incremental_sync(
     *,
     blockscout_client: Any,
     address: str,
@@ -61,6 +62,7 @@ async def incremental_sync(
     decimals: int,
     existing_events: Iterable[dict[str, Any]],
 ) -> SyncResult:
+    """Synchronous incremental sync."""
     # Determine from_block with overlap window to guard against reorg
     existing_list: list[dict[str, Any]] = list(existing_events)
     last_block: int = max((int(e.get("block_number", 0)) for e in existing_list), default=0)
@@ -69,7 +71,7 @@ async def incremental_sync(
 
     topic0_raw: str = event_abi_to_log_topic(cast(Any, event_abi)).hex()
     topic0: str = "0x" + topic0_raw if not topic0_raw.startswith("0x") else topic0_raw
-    logs = await blockscout_client.fetch_logs_paginated(
+    logs = blockscout_client.fetch_logs_paginated(  # Remove await
         address=address,
         topic0=topic0,
         from_block=from_block,

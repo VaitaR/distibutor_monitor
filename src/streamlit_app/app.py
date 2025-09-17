@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import datetime
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -38,24 +38,50 @@ def get_clients(chain: str) -> tuple[BlockscoutClient, RpcClient]:
     return blockscout, rpc
 
 
-def safe_asyncio_run(coro_func: Any, *args: Any, **kwargs: Any) -> Any:
-    """Safely run async function, handling event loop issues."""
-    def run_coro() -> Any:
-        return asyncio.run(coro_func(*args, **kwargs))
+# Add caching for data fetching with TTL
+@st.cache_data(ttl=5)  # Cache for 5 seconds to prevent excessive API calls
+def fetch_data_cached(
+    chain: str,
+    contract_address: str,
+    event_abi: dict[str, Any],
+    from_block: int,
+    page_size: int,
+    decimals: int,
+    is_live: bool = False,
+    existing_events: list[dict[str, Any]] | None = None,
+    confirmation_blocks: int = 6,
+) -> tuple[list[dict[str, Any]], int, datetime.datetime]:
+    """Cached data fetching function."""
+    blockscout, rpc = get_clients(chain)
+    blockscout._qps = 3.0  # Default rate limit
 
-    try:
-        return run_coro()
-    except RuntimeError as e:
-        if "Event loop is closed" in str(e) or "no running event loop" in str(e):
-            # Create a fresh event loop
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return run_coro()
-            finally:
-                loop.close()
-        else:
-            raise
+    current_time = datetime.datetime.now()
+
+    if is_live and existing_events:
+        # Live update
+        res = run_live_tick(
+            blockscout_client=blockscout,
+            rpc_client=rpc,
+            address=contract_address,
+            event_abi=event_abi,
+            existing_events=existing_events,
+            confirmation_blocks=confirmation_blocks,
+            page_size=page_size,
+            decimals=decimals,
+        )
+    else:
+        # Initial sync
+        res = run_initial_sync(
+            blockscout_client=blockscout,
+            rpc_client=rpc,
+            address=contract_address,
+            event_abi=event_abi,
+            from_block=from_block,
+            page_size=page_size,
+            decimals=decimals,
+        )
+
+    return res.events, res.cursor.last_block, current_time
 
 
 def main() -> None:
@@ -93,57 +119,54 @@ def main() -> None:
                 try:
                     with st.spinner("Running initial sync..."):
                         st.info(f"Syncing from block {app.from_block} for contract {app.contract_address}")
-                        res = safe_asyncio_run(
-                            run_initial_sync,
-                            blockscout_client=blockscout,
-                            rpc_client=rpc,
-                            address=app.contract_address,
+                        events, last_block, sync_time = fetch_data_cached(
+                            chain=app.chain,
+                            contract_address=app.contract_address,
                             event_abi=event_abi,
                             from_block=app.from_block,
                             page_size=app.page_size,
                             decimals=app.token_decimals,
+                            is_live=False,
                         )
-                        app.events = res.events
-                        app.last_block = res.cursor.last_block
-                        app.last_sync_time = datetime.datetime.now()
+                        app.events = events
+                        app.last_block = last_block
+                        app.last_sync_time = sync_time
                         app.trigger_initial_sync = False
-                        if not res.events:
+                        if not events:
                             st.warning(f"No events found from block {app.from_block}. Try a different block range or check the contract address.")
                         else:
-                            st.success(f"Found {len(res.events)} events, last block: {res.cursor.last_block}")
+                            st.success(f"Found {len(events)} events, last block: {last_block}")
                 except Exception as exc:
                     st.error(f"Initial Sync failed: {exc}")
                     app.trigger_initial_sync = False
 
-            # Native Streamlit auto-refresh with safe asyncio handling
+            # Native Streamlit auto-refresh - simple and reliable
             if app.live_running:
                 try:
                     current_time = datetime.datetime.now()
                     st.info(f"🔄 Live mode active - updating at {current_time.strftime('%H:%M:%S')}")
 
                     with st.spinner("Live updating..."):
-                        # Use safe asyncio runner to handle event loop issues
-                        res2 = safe_asyncio_run(
-                            run_live_tick,
-                            blockscout_client=blockscout,
-                            rpc_client=rpc,
-                            address=app.contract_address,
+                        events, last_block, sync_time = fetch_data_cached(
+                            chain=app.chain,
+                            contract_address=app.contract_address,
                             event_abi=event_abi,
-                            existing_events=app.events,
-                            confirmation_blocks=app.confirmation_blocks,
+                            from_block=app.from_block,
                             page_size=app.page_size,
                             decimals=app.token_decimals,
+                            is_live=True,
+                            existing_events=app.events,
+                            confirmation_blocks=app.confirmation_blocks,
                         )
 
-                        app.events = res2.events
-                        app.last_block = res2.cursor.last_block
-                        app.last_sync_time = current_time
+                        app.events = events
+                        app.last_block = last_block
+                        app.last_sync_time = sync_time
 
                         refresh_seconds = max(1, int(app.poll_interval_ms / 1000))
                         st.success(f"✅ Live update completed - next update in {refresh_seconds}s")
 
                     # Native Streamlit auto-refresh: sleep + rerun
-                    import time
                     time.sleep(refresh_seconds)
                     st.rerun()
 

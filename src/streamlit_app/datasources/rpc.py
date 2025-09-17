@@ -6,14 +6,15 @@ import httpx
 class RpcClient:
     def __init__(self, *, base_url: str) -> None:
         self._base_url = base_url
-        self._client = httpx.AsyncClient(timeout=20.0)
+        self._client = httpx.Client(timeout=20.0)  # Synchronous client
 
-    async def close(self) -> None:
-        await self._client.aclose()
+    def close(self) -> None:
+        self._client.close()
 
-    async def get_latest_block_number(self) -> int:
+    def get_latest_block_number(self) -> int:
+        """Get latest block number synchronously."""
         payload = {"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1}
-        resp = await self._client.post(self._base_url, json=payload)
+        resp = self._client.post(self._base_url, json=payload)
         resp.raise_for_status()
         data = resp.json()
         result = data.get("result")

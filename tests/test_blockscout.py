@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -16,7 +16,7 @@ async def test_blockscout_pagination_mocked() -> None:
         rate_limit_qps=100.0,
     )
 
-    page1: List[Dict[str, Any]] = [
+    page1: list[dict[str, Any]] = [
         {
             "address": "0x1",
             "topics": ["0xabc"],
@@ -27,7 +27,7 @@ async def test_blockscout_pagination_mocked() -> None:
             "timeStamp": 1000,
         }
     ]
-    page2: List[Dict[str, Any]] = [
+    page2: list[dict[str, Any]] = [
         {
             "address": "0x1",
             "topics": ["0xabc"],
@@ -65,7 +65,7 @@ async def test_blockscout_normalizes_hex_fields() -> None:
         def raise_for_status(self) -> None:
             return None
 
-        def json(self) -> Dict[str, Any]:
+        def json(self) -> dict[str, Any]:
             return {
                 "result": [
                     {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import httpx
 
@@ -23,9 +23,9 @@ def _parse_int(value: Any) -> int:
 
 
 class BlockscoutClient:
-    def __init__(self, *, base_url: str, api_key: Optional[str], rate_limit_qps: float) -> None:
+    def __init__(self, *, base_url: str, api_key: str | None, rate_limit_qps: float) -> None:
         self._base_url: str = base_url.rstrip("/")
-        self._api_key: Optional[str] = api_key
+        self._api_key: str | None = api_key
         self._qps: float = rate_limit_qps
         self._client: httpx.AsyncClient = httpx.AsyncClient(timeout=30.0)
 
@@ -46,7 +46,7 @@ class BlockscoutClient:
         to_block: int,
         page: int,
         offset: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         params = {
             "module": "logs",
             "action": "getLogs",
@@ -71,7 +71,7 @@ class BlockscoutClient:
         if not isinstance(result, list):
             return []
         # Normalize field types
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for item in result:
             out.append(
                 {
@@ -95,10 +95,10 @@ class BlockscoutClient:
         to_block: int,
         page_size: int,
         start_page: int = 1,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         page = start_page
-        collected: List[Dict[str, Any]] = []
-        seen: Set[Tuple[str, int]] = set()
+        collected: list[dict[str, Any]] = []
+        seen: set[tuple[str, int]] = set()
         max_pages: int = 10000
         pages_scanned: int = 0
         while True:

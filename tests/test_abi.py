@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, List, Dict
+from typing import Any
 
 from streamlit_app.core.abi import find_claim_events, load_abi_from_json
 
 
 def test_find_claim_events_by_name_and_signature() -> None:
-    abi: List[Dict[str, Any]] = [
+    abi: list[dict[str, Any]] = [
         {
             "type": "event",
             "name": "Transfer",

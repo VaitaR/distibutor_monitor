@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ..config import NETWORKS, PAGE_SIZE_DEFAULT, API_QPS
+from ..config import API_QPS, NETWORKS, PAGE_SIZE_DEFAULT
 from .state import ensure_session_state
 
 

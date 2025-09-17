@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock
 
 import eth_abi
@@ -10,7 +10,7 @@ from eth_utils import event_abi_to_log_topic, to_checksum_address
 from streamlit_app.core.sync import SyncResult, incremental_sync
 
 
-def _make_claim_event_abi() -> Dict[str, Any]:
+def _make_claim_event_abi() -> dict[str, Any]:
     return {
         "type": "event",
         "name": "Claim",
@@ -22,7 +22,7 @@ def _make_claim_event_abi() -> Dict[str, Any]:
     }
 
 
-def _mk_log(event_abi: Dict[str, Any], block: int, idx: int, claimer: str, amount: int) -> Dict[str, Any]:
+def _mk_log(event_abi: dict[str, Any], block: int, idx: int, claimer: str, amount: int) -> dict[str, Any]:
     topic0 = event_abi_to_log_topic(event_abi).hex()
     data = eth_abi.encode(["address", "uint256"], [claimer, amount])
     return {
@@ -50,7 +50,7 @@ async def test_incremental_sync_with_overlap_confirmation_window() -> None:
     ]
 
     # New logs from 195..205 will be returned (overlap 5 blocks)
-    new_logs: List[Dict[str, Any]] = [
+    new_logs: list[dict[str, Any]] = [
         _mk_log(event_abi, 201, 0, claimer, amount),
         _mk_log(event_abi, 202, 0, claimer, amount),
         _mk_log(event_abi, 205, 0, claimer, amount),

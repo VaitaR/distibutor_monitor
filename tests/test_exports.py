@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from streamlit_app.core.exports import build_snapshot, events_to_csv
 
 
 def test_build_snapshot_and_csv() -> None:
-    events: List[Dict[str, Any]] = [
+    events: list[dict[str, Any]] = [
         {
             "claimer": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "amount_raw": 1_000_000,

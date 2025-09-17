@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import csv
 import io
-from typing import Any, Dict, Iterable, List
+from collections.abc import Iterable
+from typing import Any
 
 from .claims_aggregate import aggregate_claims
 
 
-def build_snapshot(*, chain: str, contract: str, events: Iterable[Dict[str, Any]], decimals: int) -> Dict[str, Any]:
-    events_list: List[Dict[str, Any]] = list(events)
+def build_snapshot(*, chain: str, contract: str, events: Iterable[dict[str, Any]], decimals: int) -> dict[str, Any]:
+    events_list: list[dict[str, Any]] = list(events)
     agg = aggregate_claims(events_list, decimals=decimals)
     last_block: int = max((int(e.get("block_number", 0)) for e in events_list), default=0)
 
     # Distribution with string amounts to preserve exact decimal text
-    claimed_by: Dict[str, str] = {addr: str(amount.normalize()) for addr, amount in agg.distribution_by_address.items()}
+    claimed_by: dict[str, str] = {addr: str(amount.normalize()) for addr, amount in agg.distribution_by_address.items()}
 
     return {
         "chain": chain,
@@ -23,7 +24,7 @@ def build_snapshot(*, chain: str, contract: str, events: Iterable[Dict[str, Any]
     }
 
 
-def events_to_csv(events: Iterable[Dict[str, Any]]) -> str:
+def events_to_csv(events: Iterable[dict[str, Any]]) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["claimer", "amount_raw", "tx_hash", "block_number", "log_index", "timestamp"])

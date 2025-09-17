@@ -1,24 +1,26 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
+
 import streamlit as st
 from streamlit.components.v1 import html as components_html
-import asyncio
 
+# Add src directory to Python path for imports
 SRC_DIR = str(Path(__file__).resolve().parents[1])
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
-from streamlit_app.utils.secrets import load_secrets_from_dotenv
-from streamlit_app.ui.sidebar import render_sidebar
-from streamlit_app.ui.views import render_main
-from streamlit_app.ui.state import ensure_session_state
 from streamlit_app.config import resolve_network_config
+from streamlit_app.core.abi import find_all_events, load_abi_from_json
+from streamlit_app.core.app_logic import run_initial_sync, run_live_tick
 from streamlit_app.datasources.blockscout import BlockscoutClient
 from streamlit_app.datasources.rpc import RpcClient
-from streamlit_app.core.abi import load_abi_from_json, find_all_events
-from streamlit_app.core.app_logic import run_initial_sync, run_live_tick
+from streamlit_app.ui.sidebar import render_sidebar
+from streamlit_app.ui.state import ensure_session_state
+from streamlit_app.ui.views import render_main
+from streamlit_app.utils.secrets import load_secrets_from_dotenv
 
 
 def main() -> None:
@@ -72,7 +74,7 @@ def main() -> None:
                             st.warning(f"No events found from block {app.from_block}. Try a different block range or check the contract address.")
                         else:
                             st.success(f"Found {len(res.events)} events, last block: {res.cursor.last_block}")
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     st.error(f"Initial Sync failed: {exc}")
                     app.trigger_initial_sync = False
 
@@ -91,7 +93,7 @@ def main() -> None:
                         ))
                         app.events = res2.events
                         app.last_block = res2.cursor.last_block
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     st.error(f"Live update failed: {exc}")
                     app.live_running = False
 

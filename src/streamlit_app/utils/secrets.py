@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 try:
     from dotenv import load_dotenv
@@ -15,9 +14,9 @@ def load_secrets_from_dotenv() -> None:
         load_dotenv(override=False)
 
 
-def get_ankr_api_key() -> Optional[str]:
+def get_ankr_api_key() -> str | None:
     return os.getenv("ANKR_API_KEY")
 
 
-def get_etherscan_api_key() -> Optional[str]:
+def get_etherscan_api_key() -> str | None:
     return os.getenv("ETHERSCAN_API_KEY")

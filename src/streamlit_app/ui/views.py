@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
 from ..core.claims_aggregate import aggregate_claims, build_cumulative_series
+from ..core.exports import build_snapshot, events_to_csv
 from .state import ensure_session_state
-from ..core.exports import events_to_csv, build_snapshot
 
 
 def render_main() -> None:
     app = ensure_session_state(st)
-    events: List[Dict[str, Any]] = app.events
-    
+    events: list[dict[str, Any]] = app.events
+
     # Use user-configured token decimals
     token_decimals = app.token_decimals
     agg = aggregate_claims(events, decimals=token_decimals)
@@ -35,12 +35,12 @@ def render_main() -> None:
         df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
         # Convert Decimal to float for Altair compatibility
         df['cumulative_adj'] = df['cumulative_adj'].astype(float)
-        
+
         chart = (
             alt.Chart(df)
             .mark_line()
             .encode(
-                x=alt.X("datetime:T", title="Time"), 
+                x=alt.X("datetime:T", title="Time"),
                 y=alt.Y("cumulative_adj:Q", title="Cumulative Claimed")
             )
             .properties(height=240)
@@ -50,18 +50,18 @@ def render_main() -> None:
     if events:
         df_events = pd.DataFrame(events)
         df_events = df_events.sort_values(["timestamp", "block_number", "log_index"], ascending=True)
-        
+
         # Add converted amount column
         if 'amount_raw' in df_events.columns:
             from decimal import Decimal
             df_events['amount'] = df_events['amount_raw'].apply(
                 lambda x: float(Decimal(x) / (Decimal(10) ** token_decimals)) if x else 0
             )
-        
+
         # Convert timestamp to readable datetime
         if 'timestamp' in df_events.columns:
             df_events['datetime'] = pd.to_datetime(df_events['timestamp'], unit='s')
-        
+
         # Convert large integers to strings to avoid overflow in Streamlit
         for col in df_events.columns:
             if col in ['amount_raw', 'timestamp']:  # Keep these as strings to avoid overflow
@@ -74,7 +74,7 @@ def render_main() -> None:
                         df_events[col] = df_events[col].astype(str)
                 except (TypeError, ValueError):
                     pass
-        
+
         # Reorder columns to show converted values first
         cols = list(df_events.columns)
         if 'amount' in cols and 'datetime' in cols:
@@ -83,7 +83,7 @@ def render_main() -> None:
             ordered_cols = [col for col in priority_cols if col in cols]
             remaining_cols = [col for col in cols if col not in ordered_cols]
             df_events = df_events[ordered_cols + remaining_cols]
-        
+
         st.dataframe(df_events, use_container_width=True, hide_index=True)
 
         cexp1, cexp2 = st.columns(2)

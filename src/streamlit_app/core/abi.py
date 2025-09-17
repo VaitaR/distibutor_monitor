@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List
+from collections.abc import Iterable
+from typing import Any
 
 
 class AbiError(Exception):
     """Raised when ABI parsing or validation fails."""
 
 
-def load_abi_from_json(data: bytes | str) -> List[Dict[str, Any]]:
+def load_abi_from_json(data: bytes | str) -> list[dict[str, Any]]:
     """Load ABI from JSON bytes or string.
 
     Args:
@@ -29,7 +30,7 @@ def load_abi_from_json(data: bytes | str) -> List[Dict[str, Any]]:
     return parsed
 
 
-def find_claim_events(abi: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def find_claim_events(abi: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     """Find events whose name contains the substring 'claim' (case-insensitive).
 
     Args:
@@ -38,7 +39,7 @@ def find_claim_events(abi: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Returns:
         List of ABI event entries matching the predicate, sorted by name.
     """
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
     for entry in abi:
         if not isinstance(entry, dict):
             continue
@@ -50,7 +51,7 @@ def find_claim_events(abi: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(events, key=lambda e: str(e.get("name", "")))
 
 
-def find_all_events(abi: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def find_all_events(abi: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     """Find all events in the ABI.
 
     Args:
@@ -59,7 +60,7 @@ def find_all_events(abi: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Returns:
         List of all ABI event entries, sorted by name.
     """
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
     for entry in abi:
         if not isinstance(entry, dict):
             continue

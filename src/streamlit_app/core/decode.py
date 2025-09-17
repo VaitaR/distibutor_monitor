@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, cast
+from collections.abc import Iterable
+from typing import Any, cast
 
 from eth_abi.abi import decode as abi_decode
 from eth_utils.abi import event_abi_to_log_topic
 from eth_utils.address import to_checksum_address
 
 
-def _topic0_hex(event_abi: Dict[str, Any]) -> str:
+def _topic0_hex(event_abi: dict[str, Any]) -> str:
     return event_abi_to_log_topic(cast(Any, event_abi)).hex()
 
 
@@ -24,7 +25,7 @@ def _parse_int(value: Any) -> int:
         return 0
 
 
-def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def decode_logs(events_abi: Iterable[dict[str, Any]], logs: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     """Decode logs using provided event ABIs.
 
     Supports non-indexed parameters for the common Claim(address,uint256) shape.
@@ -32,7 +33,7 @@ def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, A
     Returns a list of normalized event dicts with keys:
       - claimer, amount_raw, tx_hash, block_number, log_index, timestamp
     """
-    abi_by_topic: Dict[str, Dict[str, Any]] = {}
+    abi_by_topic: dict[str, dict[str, Any]] = {}
     for e in events_abi:
         try:
             topic_hex = _topic0_hex(e)
@@ -45,9 +46,9 @@ def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, A
         except Exception:
             continue
 
-    decoded: List[Dict[str, Any]] = []
+    decoded: list[dict[str, Any]] = []
     for log in logs:
-        topics: List[str] = list(log.get("topics", []))
+        topics: list[str] = list(log.get("topics", []))
         if not topics:
             continue
         topic0 = topics[0]
@@ -58,11 +59,11 @@ def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, A
         if event_abi is None:
             continue
 
-        inputs: List[Dict[str, Any]] = list(event_abi.get("inputs", []))
+        inputs: list[dict[str, Any]] = list(event_abi.get("inputs", []))
         non_indexed_inputs = [i for i in inputs if not bool(i.get("indexed"))]
         indexed_inputs = [i for i in inputs if bool(i.get("indexed"))]
-        
-        non_indexed_types: List[str] = [i["type"] for i in non_indexed_inputs]
+
+        non_indexed_types: list[str] = [i["type"] for i in non_indexed_inputs]
 
         data_hex: str = str(log.get("data", "0x"))
         if data_hex.startswith("0x"):
@@ -70,13 +71,13 @@ def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, A
         data_bytes = bytes.fromhex(data_hex) if data_hex else b""
 
         # Decode non-indexed data
-        non_indexed_values: List[Any] = []
+        non_indexed_values: list[Any] = []
         if non_indexed_types:
             non_indexed_values = list(abi_decode(non_indexed_types, data_bytes))
 
         # Extract indexed values from topics (skip topic0)
-        topics: List[str] = list(log.get("topics", []))
-        indexed_values: List[Any] = []
+        topics: list[str] = list(log.get("topics", []))
+        indexed_values: list[Any] = []
         for i, indexed_input in enumerate(indexed_inputs):
             topic_index = i + 1  # Skip topic0
             if topic_index < len(topics) and topics[topic_index]:
@@ -101,9 +102,9 @@ def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, A
         # Try to map common fields from both indexed and non-indexed
         claimer: str | None = None
         amount_raw: int | None = None
-        
+
         # Check indexed parameters first
-        for i, (inp, val) in enumerate(zip(indexed_inputs, indexed_values)):
+        for _i, (inp, val) in enumerate(zip(indexed_inputs, indexed_values, strict=False)):
             if val is None:
                 continue
             typ = inp.get("type")
@@ -112,7 +113,7 @@ def decode_logs(events_abi: Iterable[Dict[str, Any]], logs: Iterable[Dict[str, A
                 claimer = to_checksum_address(str(val))
             elif typ.startswith("uint") and amount_raw is None and "amount" in name:
                 amount_raw = min(int(val), 2**63 - 1) if isinstance(val, int) else 0
-        
+
         # Check non-indexed parameters
         for i, val in enumerate(non_indexed_values):
             inp = non_indexed_inputs[i] if i < len(non_indexed_inputs) else {}

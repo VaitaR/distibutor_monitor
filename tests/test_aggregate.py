@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 from streamlit_app.core.claims_aggregate import (
     aggregate_claims,
-    deduplicate_events,
     build_cumulative_series,
+    deduplicate_events,
 )
 
 
-def _mk_evt(claimer: str, amount_raw: int, block: int, ts: int, idx: int) -> Dict[str, Any]:
+def _mk_evt(claimer: str, amount_raw: int, block: int, ts: int, idx: int) -> dict[str, Any]:
     return {
         "claimer": claimer,
         "amount_raw": amount_raw,
@@ -22,7 +22,7 @@ def _mk_evt(claimer: str, amount_raw: int, block: int, ts: int, idx: int) -> Dic
 
 
 def test_deduplicate_and_aggregate_and_cumulative() -> None:
-    events: List[Dict[str, Any]] = [
+    events: list[dict[str, Any]] = [
         _mk_evt("0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa", 1_000_000, 10, 1000, 0),
         _mk_evt("0xBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBb", 2_000_000, 11, 1100, 0),
         _mk_evt("0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa", 500_000, 12, 1200, 0),

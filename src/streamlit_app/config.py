@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, TypedDict
+from typing import TypedDict
+
 
 class NetworkTemplate(TypedDict):
     chain_id: int
@@ -10,7 +11,7 @@ class NetworkTemplate(TypedDict):
     ankr_rpc: str
 
 
-NETWORKS: Dict[str, NetworkTemplate] = {
+NETWORKS: dict[str, NetworkTemplate] = {
     "mainnet": {
         "chain_id": 1,
         "blockscout_api": "https://eth.blockscout.com/api",

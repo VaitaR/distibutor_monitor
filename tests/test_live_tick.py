@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List
-
-import pytest
-import eth_abi
-from eth_utils import event_abi_to_log_topic, to_checksum_address
+from typing import Any
 from unittest.mock import AsyncMock
 
-from streamlit_app.core.abi import load_abi_from_json, find_claim_events
-from streamlit_app.core.decode import decode_logs
-from streamlit_app.datasources.blockscout import BlockscoutClient
+import eth_abi
+import pytest
+from eth_utils import event_abi_to_log_topic, to_checksum_address
+
 from streamlit_app.config import resolve_network_config
+from streamlit_app.core.abi import find_claim_events, load_abi_from_json
+from streamlit_app.core.decode import decode_logs
 from streamlit_app.core.sync import incremental_sync
+from streamlit_app.datasources.blockscout import BlockscoutClient
 
 
-def _make_claim_event_abi() -> Dict[str, Any]:
+def _make_claim_event_abi() -> dict[str, Any]:
     return {
         "type": "event",
         "name": "Claim",
@@ -27,7 +27,7 @@ def _make_claim_event_abi() -> Dict[str, Any]:
     }
 
 
-def _mk_log(event_abi: Dict[str, Any], block: int, idx: int, claimer: str, amount: int) -> Dict[str, Any]:
+def _mk_log(event_abi: dict[str, Any], block: int, idx: int, claimer: str, amount: int) -> dict[str, Any]:
     topic0 = event_abi_to_log_topic(event_abi).hex()
     data = eth_abi.encode(["address", "uint256"], [claimer, amount])
     return {
@@ -47,8 +47,8 @@ async def test_live_tick_increments_with_latest_block() -> None:
     claimer = to_checksum_address("0x000000000000000000000000000000000000dEaD")
     amount = 10**6
 
-    existing: List[Dict[str, Any]] = []
-    new_logs: List[Dict[str, Any]] = [
+    existing: list[dict[str, Any]] = []
+    new_logs: list[dict[str, Any]] = [
         _mk_log(event_abi, 1000, 0, claimer, amount),
     ]
 
@@ -82,12 +82,12 @@ async def test_e2e_blockscout_decode_with_real_abi() -> None:
 
     # Load real distributor ABI from repo root
     abi_path = os.path.join(os.getcwd(), "abi_distributor.json")
-    with open(abi_path, "r", encoding="utf-8") as f:
+    with open(abi_path, encoding="utf-8") as f:
         abi_json = f.read()
     abi = load_abi_from_json(abi_json)
-    claim_events: List[Dict[str, Any]] = find_claim_events(abi)
+    claim_events: list[dict[str, Any]] = find_claim_events(abi)
     assert claim_events, "No Claim-like events found in ABI"
-    
+
     print(f"Found {len(claim_events)} claim events: {[e.get('name') for e in claim_events]}")
     event_abi = claim_events[0]
     print(f"Using event: {event_abi.get('name')}")
@@ -105,7 +105,7 @@ async def test_e2e_blockscout_decode_with_real_abi() -> None:
     print(f"Searching for topic0: {topic0}")
     print(f"Contract: {contract}, from_block: {from_block}, to_block: {to_block}")
     print(f"Blockscout URL: {cfg['blockscout_api']}")
-    
+
     # First, get ALL logs for this contract to see what events exist
     all_logs = await client.fetch_logs_paginated(
         address=contract,
@@ -114,15 +114,15 @@ async def test_e2e_blockscout_decode_with_real_abi() -> None:
         to_block=to_block,
         page_size=100,
     )
-    
+
     print(f"All logs found: {len(all_logs)}")
     unique_topics = set()
     for log in all_logs:
         if log.get("topics"):
             unique_topics.add(log["topics"][0])
-    
+
     print(f"Unique topic0s found: {list(unique_topics)}")
-    
+
     # Now search for specific Claimed events
     logs = await client.fetch_logs_paginated(
         address=contract,
@@ -131,32 +131,32 @@ async def test_e2e_blockscout_decode_with_real_abi() -> None:
         to_block=to_block,
         page_size=100,
     )
-    
+
     print(f"Claimed event logs found: {len(logs)}")
-    
+
     # Filter logs to only those with matching topic0
     filtered_logs = [log for log in logs if log.get("topics") and log["topics"][0] == topic0]
     print(f"Logs with correct topic0: {len(filtered_logs)}")
-    
+
     if filtered_logs:
         print(f"First correct Claimed log: {filtered_logs[0]}")
 
     decoded = decode_logs([event_abi], filtered_logs)
     print(f"Decoded Claimed events: {len(decoded)}")
-    
+
     if filtered_logs and not decoded:
         print("Debug: First log details:")
         log = filtered_logs[0]
         print(f"  Topics: {log.get('topics')}")
         print(f"  Data: {log.get('data')}")
         print(f"  Event ABI: {event_abi}")
-        
+
         # Manual decode attempt
         expected_topic = event_abi_to_log_topic(event_abi).hex()
         print(f"  Expected topic0 (no 0x): {expected_topic}")
         print(f"  Actual topic0: {log.get('topics', [''])[0]}")
         print(f"  Topic match: {log.get('topics', [''])[0] == '0x' + expected_topic}")
-    
+
     if not decoded:
         print(f"No Claimed events found. Expected topic0: {topic0}")
         print("Available events in contract:")

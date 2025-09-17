@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock
 
 import eth_abi
@@ -10,7 +10,7 @@ from eth_utils import event_abi_to_log_topic, to_checksum_address
 from streamlit_app.core.sync import Cursor, SyncResult, initial_sync
 
 
-def _make_claim_event_abi() -> Dict[str, Any]:
+def _make_claim_event_abi() -> dict[str, Any]:
     return {
         "type": "event",
         "name": "Claim",
@@ -29,7 +29,7 @@ async def test_initial_sync_paginates_decodes_and_dedups() -> None:
     claimer = to_checksum_address("0x000000000000000000000000000000000000dEaD")
     amount = 10**6
 
-    def mk_log(block: int, idx: int) -> Dict[str, Any]:
+    def mk_log(block: int, idx: int) -> dict[str, Any]:
         data = eth_abi.encode(["address", "uint256"], [claimer, amount])
         return {
             "address": to_checksum_address("0x1111111111111111111111111111111111111111"),
@@ -41,8 +41,8 @@ async def test_initial_sync_paginates_decodes_and_dedups() -> None:
             "timeStamp": 1_700_000_000 + block,
         }
 
-    page1: List[Dict[str, Any]] = [mk_log(100, 0), mk_log(101, 0)]
-    page2: List[Dict[str, Any]] = [mk_log(102, 0)]
+    page1: list[dict[str, Any]] = [mk_log(100, 0), mk_log(101, 0)]
+    page2: list[dict[str, Any]] = [mk_log(102, 0)]
 
     mock_client = AsyncMock()
     mock_client.fetch_logs_paginated = AsyncMock(return_value=page1 + page2)  # type: ignore[attr-defined]

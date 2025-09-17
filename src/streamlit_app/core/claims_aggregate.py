@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal, getcontext
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any
 
 getcontext().prec = 78
 
@@ -13,7 +14,7 @@ class ClaimsAggregate:
     total_claimed_adj: Decimal
     unique_claimers: int
     claims_count: int
-    distribution_by_address: Dict[str, Decimal]
+    distribution_by_address: dict[str, Decimal]
 
 
 def _to_decimal(value: int, decimals: int) -> Decimal:
@@ -21,9 +22,9 @@ def _to_decimal(value: int, decimals: int) -> Decimal:
     return Decimal(value) / factor
 
 
-def deduplicate_events(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    seen: set[Tuple[str, int]] = set()
-    out: List[Dict[str, Any]] = []
+def deduplicate_events(events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, int]] = set()
+    out: list[dict[str, Any]] = []
     for e in events:
         key = (str(e.get("tx_hash", "")), int(e.get("log_index", 0)))
         if key in seen:
@@ -33,9 +34,9 @@ def deduplicate_events(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]
     return out
 
 
-def aggregate_claims(events: Iterable[Dict[str, Any]], *, decimals: int) -> ClaimsAggregate:
+def aggregate_claims(events: Iterable[dict[str, Any]], *, decimals: int) -> ClaimsAggregate:
     total_raw: int = 0
-    dist: Dict[str, Decimal] = {}
+    dist: dict[str, Decimal] = {}
     claimers: set[str] = set()
     count: int = 0
     for e in events:
@@ -55,13 +56,13 @@ def aggregate_claims(events: Iterable[Dict[str, Any]], *, decimals: int) -> Clai
     )
 
 
-def build_cumulative_series(events: Iterable[Dict[str, Any]], *, decimals: int) -> List[Tuple[int, Decimal]]:
+def build_cumulative_series(events: Iterable[dict[str, Any]], *, decimals: int) -> list[tuple[int, Decimal]]:
     # sort by timestamp, then block/log for stability
-    items: List[Dict[str, Any]] = sorted(
+    items: list[dict[str, Any]] = sorted(
         list(events), key=lambda e: (int(e.get("timestamp", 0)), int(e.get("block_number", 0)), int(e.get("log_index", 0)))
     )
     cumulative: Decimal = Decimal(0)
-    series: List[Tuple[int, Decimal]] = []
+    series: list[tuple[int, Decimal]] = []
     for e in items:
         cumulative += _to_decimal(int(e.get("amount_raw", 0)), decimals)
         series.append((int(e.get("timestamp", 0)), cumulative))

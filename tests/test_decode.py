@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import eth_abi
 from eth_utils import event_abi_to_log_topic, to_checksum_address
@@ -9,7 +9,7 @@ from streamlit_app.core.decode import decode_logs
 
 
 def test_decode_claim_log_nonindexed() -> None:
-    event_abi: Dict[str, Any] = {
+    event_abi: dict[str, Any] = {
         "type": "event",
         "name": "Claim",
         "inputs": [
@@ -23,7 +23,7 @@ def test_decode_claim_log_nonindexed() -> None:
     claimer = to_checksum_address("0x000000000000000000000000000000000000dEaD")
     amount = 123_456_789
     data_bytes = eth_abi.encode(["address", "uint256"], [claimer, amount])
-    log: Dict[str, Any] = {
+    log: dict[str, Any] = {
         "address": to_checksum_address("0x1111111111111111111111111111111111111111"),
         "topics": [topic0],
         "data": "0x" + data_bytes.hex(),
@@ -45,7 +45,7 @@ def test_decode_claim_log_nonindexed() -> None:
 
 
 def test_decode_hex_numeric_fields() -> None:
-    event_abi: Dict[str, Any] = {
+    event_abi: dict[str, Any] = {
         "type": "event",
         "name": "Claim",
         "inputs": [
@@ -59,7 +59,7 @@ def test_decode_hex_numeric_fields() -> None:
     amount = 1
     data_bytes = eth_abi.encode(["address", "uint256"], [claimer, amount])
 
-    log_hex: Dict[str, Any] = {
+    log_hex: dict[str, Any] = {
         "address": to_checksum_address("0x1111111111111111111111111111111111111111"),
         "topics": [topic0],
         "data": "0x" + data_bytes.hex(),

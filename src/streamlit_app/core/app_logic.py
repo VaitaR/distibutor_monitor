@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable
+from collections.abc import Iterable
+from typing import Any
 
-from .sync import SyncResult, initial_sync, incremental_sync
+from .sync import SyncResult, incremental_sync, initial_sync
 
 
 async def run_initial_sync(
@@ -10,7 +11,7 @@ async def run_initial_sync(
     blockscout_client: Any,
     rpc_client: Any,
     address: str,
-    event_abi: Dict[str, Any],
+    event_abi: dict[str, Any],
     from_block: int,
     page_size: int,
     decimals: int,
@@ -36,8 +37,8 @@ async def run_live_tick(
     blockscout_client: Any,
     rpc_client: Any,
     address: str,
-    event_abi: Dict[str, Any],
-    existing_events: Iterable[Dict[str, Any]],
+    event_abi: dict[str, Any],
+    existing_events: Iterable[dict[str, Any]],
     confirmation_blocks: int,
     page_size: int,
     decimals: int,

@@ -37,12 +37,19 @@ def render_main() -> None:
     c3.metric("Claims Count", agg.claims_count)
     c4.metric("Last Block", app.last_block)
 
-    # Display last update time
+    # Display last update time and live mode status
     last_update_text = _format_last_update_time(app.last_sync_time)
-    if app.last_sync_time is None:
-        st.info(f"📊 **Last Updated:** {last_update_text}")
+    if app.live_running:
+        if app.last_sync_time is None:
+            st.success(f"🔴 **Live Mode Active** | Last Updated: {last_update_text}")
+        else:
+            refresh_interval = max(1, int(app.poll_interval_ms / 1000))
+            st.success(f"🔴 **Live Mode Active** (updates every {refresh_interval}s) | Last Updated: {last_update_text}")
     else:
-        st.info(f"🔄 **Last Updated:** {last_update_text}")
+        if app.last_sync_time is None:
+            st.info(f"📊 **Last Updated:** {last_update_text}")
+        else:
+            st.info(f"🔄 **Last Updated:** {last_update_text}")
 
     # Cumulative chart
     series = build_cumulative_series(events, decimals=token_decimals)

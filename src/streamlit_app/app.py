@@ -100,12 +100,19 @@ def main() -> None:
                     st.error(f"Live update failed: {exc}")
                     app.live_running = False
 
-            # Trigger browser auto-refresh using a lightweight meta refresh
-            refresh_seconds = max(1, int(app.poll_interval_ms / 1000))
-            components_html(
-                f"<meta http-equiv='refresh' content='{refresh_seconds}'>",
-                height=0,
-            )
+            # Auto-refresh for live mode
+            if app.live_running:
+                # Use JavaScript-based auto-refresh for live mode
+                components_html(
+                    f"""
+                    <script>
+                    setTimeout(function() {{
+                        window.location.reload();
+                    }}, {app.poll_interval_ms});
+                    </script>
+                    """,
+                    height=0,
+                )
 
     render_main()
 

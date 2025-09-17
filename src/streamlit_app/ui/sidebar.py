@@ -25,8 +25,15 @@ def render_sidebar() -> None:
 
         st.divider()
         start = st.button("Initial Sync", use_container_width=True)
-        start_live = st.button("Start Live", use_container_width=True)
-        stop_live = st.button("Stop Live", use_container_width=True)
+
+        # Live mode buttons with visual indication
+        if app.live_running:
+            start_live = st.button("🔴 Live Mode ON", use_container_width=True, type="primary")
+            stop_live = st.button("Stop Live", use_container_width=True)
+        else:
+            start_live = st.button("Start Live", use_container_width=True)
+            stop_live = st.button("Stop Live", use_container_width=True, disabled=True)
+
         reset = st.button("Reset", type="secondary", use_container_width=True)
 
         if reset:

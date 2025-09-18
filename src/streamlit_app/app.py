@@ -92,11 +92,20 @@ def main() -> None:
 
     app = ensure_session_state(st)
 
-    # Upload ABI and select events
+    # Upload ABI and select events (support default ABI)
     abi_file = st.sidebar.file_uploader("Upload ABI.json", type=["json"])
     if abi_file is not None:
         abi = load_abi_from_json(abi_file.read())
         app.abi_events = find_all_events(abi)
+    else:
+        # Load default distributor ABI from project root if available
+        try:
+            default_path = Path(__file__).resolve().parents[2] / "abi_distributor.json"
+            if default_path.exists():
+                abi = load_abi_from_json(default_path.read_bytes())
+                app.abi_events = find_all_events(abi)
+        except Exception:
+            pass
         names = [e.get("name", "") for e in app.abi_events]
         # Default to claim-like events if available, otherwise show all
         claim_names = [name for name in names if "claim" in name.lower()]
@@ -140,11 +149,22 @@ def main() -> None:
                     st.error(f"Initial Sync failed: {exc}")
                     app.trigger_initial_sync = False
 
-            # Simple live mode with native Streamlit auto-refresh
-            if app.live_running:
-                try:
+    # Render main content first
+    render_main()
+    
+    # Live mode with st.empty() approach
+    if app.live_running and app.contract_address and app.abi_events:
+        selected_events = [e for e in app.abi_events if e.get("name") in app.selected_event_names]
+        if selected_events:
+            event_abi = selected_events[0]
+            refresh_seconds = max(5, int(app.poll_interval_ms / 1000))
+            
+            # Create placeholder for live updates
+            live_placeholder = st.empty()
+            
+            try:
+                while app.live_running:
                     current_time = datetime.datetime.now()
-                    refresh_seconds = max(5, int(app.poll_interval_ms / 1000))
                     
                     # Check if we need to update
                     should_update = (
@@ -153,7 +173,9 @@ def main() -> None:
                     )
                     
                     if should_update:
-                        with st.spinner("Updating..."):
+                        with live_placeholder.container():
+                            st.info("🔄 Updating data...")
+                            
                             events, last_block, sync_time = fetch_data_cached(
                                 chain=app.chain,
                                 contract_address=app.contract_address,
@@ -173,19 +195,24 @@ def main() -> None:
                             app.last_sync_time = sync_time
                             new_count = len(events)
                             
-                            # Show result if new events found
+                            # Show result
                             if new_count > old_count:
-                                st.success(f"Found {new_count - old_count} new events!")
-
-                    # Auto-refresh: wait and rerun
-                    time.sleep(refresh_seconds)
-                    st.rerun()
-
-                except Exception as exc:
-                    st.error(f"Live update failed: {exc}")
-                    app.live_running = False
-
-    render_main()
+                                st.success(f"✅ Found {new_count - old_count} new events! Total: {new_count}")
+                            else:
+                                st.info(f"✅ No new events. Total: {new_count}")
+                    else:
+                        # Show countdown
+                        time_since_last = (current_time - app.last_sync_time).total_seconds()
+                        next_update_in = max(0, refresh_seconds - time_since_last)
+                        with live_placeholder.container():
+                            st.info(f"🔄 Next update in {next_update_in:.0f} seconds...")
+                    
+                    # Wait before next check
+                    time.sleep(1)
+                    
+            except Exception as exc:
+                st.error(f"Live update failed: {exc}")
+                app.live_running = False
 
 
 if __name__ == "__main__":

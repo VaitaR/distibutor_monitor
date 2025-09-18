@@ -22,6 +22,7 @@ class AppState:
     live_running: bool = False
     trigger_initial_sync: bool = False
     last_sync_time: datetime.datetime | None = None
+    trigger_live_test: bool = False
 
 
 def ensure_session_state(st: Any) -> AppState:
@@ -34,6 +35,8 @@ def ensure_session_state(st: Any) -> AppState:
         app_state.token_decimals = 18
     if not hasattr(app_state, 'last_sync_time'):
         app_state.last_sync_time = None
+    if not hasattr(app_state, 'trigger_live_test'):
+        app_state.trigger_live_test = False
 
     return app_state
 

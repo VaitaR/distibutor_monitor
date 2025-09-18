@@ -112,7 +112,7 @@ def decode_logs(events_abi: Iterable[dict[str, Any]], logs: Iterable[dict[str, A
             if typ == "address" and claimer is None and ("user" in name or "account" in name or "claimer" in name):
                 claimer = to_checksum_address(str(val))
             elif typ and typ.startswith("uint") and amount_raw is None and "amount" in name:
-                amount_raw = min(int(val), 2**63 - 1) if isinstance(val, int) else 0
+                amount_raw = int(val) if isinstance(val, int) else 0
 
         # Check non-indexed parameters
         for i, val in enumerate(non_indexed_values):
@@ -122,7 +122,7 @@ def decode_logs(events_abi: Iterable[dict[str, Any]], logs: Iterable[dict[str, A
             if typ == "address" and claimer is None and ("user" in name or "account" in name or "claimer" in name):
                 claimer = to_checksum_address(str(val))
             elif typ and typ.startswith("uint") and amount_raw is None and "amount" in name:
-                amount_raw = min(int(val), 2**63 - 1) if isinstance(val, int) else 0
+                amount_raw = int(val) if isinstance(val, int) else 0
 
         decoded.append(
             {

@@ -81,14 +81,14 @@ def render_main() -> None:
         df_events = pd.DataFrame(events)
         df_events = df_events.sort_values(["timestamp", "block_number", "log_index"], ascending=True)
 
-        # Add converted amount column
+        # Add converted amount column BEFORE converting to strings
         if 'amount_raw' in df_events.columns:
             from decimal import Decimal
             df_events['amount'] = df_events['amount_raw'].apply(
                 lambda x: float(Decimal(x) / (Decimal(10) ** token_decimals)) if x else 0
             )
 
-        # Convert timestamp to readable datetime
+        # Convert timestamp to readable datetime BEFORE converting to strings
         if 'timestamp' in df_events.columns:
             df_events['datetime'] = pd.to_datetime(df_events['timestamp'], unit='s')
 

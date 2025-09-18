@@ -51,7 +51,7 @@ def render_sidebar() -> None:
         st.divider()
         st.subheader("Contract")
         app.contract_address = st.text_input("Contract address", value=app.contract_address, placeholder="0x...")
-        start = st.button("Initial Sync", use_container_width=True, key="btn_initial_sync")
+        start = st.button("Initial Sync (Update)", use_container_width=True, key="btn_initial_sync")
 
         st.subheader("Parameters")
         cols = st.columns(2)

@@ -4,7 +4,6 @@ from typing import Any
 from unittest.mock import Mock
 
 import eth_abi
-import pytest
 from eth_utils import event_abi_to_log_topic, to_checksum_address
 
 from streamlit_app.core.sync import SyncResult, incremental_sync

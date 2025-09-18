@@ -9,6 +9,7 @@ A Streamlit application for monitoring on-chain Claim events from distributor co
 - 📋 **Event Tables**: Sortable tables with converted token amounts and timestamps  
 - 📊 **Charts**: Cumulative claims visualization over time
 - 📤 **Exports**: CSV events export and JSON snapshots for distributor restarts
+- ✅ **CSV Verification**: Upload CSV files to verify claims against expected amounts (wave1_bard_wei, wave2_bard_wei)
 - 🔧 **Configurable**: Support for any ERC20 token decimals and custom ABIs
 - 🌐 **Multi-network**: Ethereum Mainnet and Sepolia testnet support
 
@@ -72,6 +73,13 @@ The application will be available at `http://localhost:8501`
 4. **Select Events**: Choose which events to monitor from the ABI
 5. **Initial Sync**: Click "Initial Sync" to fetch historical events
 6. **Live Monitoring**: Click "Start Live" for real-time updates
+7. **CSV Verification** (Optional): 
+   - Upload a CSV file with columns: `address`, `wave1_bard_wei`, `wave2_bard_wei`
+   - The app will show verification icons in the Check column:
+     - ✅ First matching claim (expected)
+     - ⚠️ Duplicate claim from same address (suspicious)
+     - ❌ Amount mismatch or address not in CSV
+   - Use `example_verification.csv` as a template
 
 ## Configuration
 

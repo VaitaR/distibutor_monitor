@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import streamlit as st
-
+import io
 from pathlib import Path
+from typing import Any
+
+import pandas as pd
+import streamlit as st
 
 from ..config import API_QPS, NETWORKS, PAGE_SIZE_DEFAULT
 from ..core.abi import find_all_events, load_abi_from_json
@@ -22,7 +25,7 @@ def render_sidebar() -> None:
         abi_file = st.file_uploader("Upload ABI.json", type=["json"], key="abi_upload")
 
         # Load ABI into session state (uploaded or default)
-        loaded_abi: list[dict] | None = None
+        loaded_abi: list[dict[str, Any]] | None = None
         if abi_file is not None:
             try:
                 loaded_abi = load_abi_from_json(abi_file.read())
@@ -65,6 +68,47 @@ def render_sidebar() -> None:
             app.token_decimals = st.number_input("Token decimals", min_value=0, max_value=30, step=1, value=app.token_decimals)
 
         st.divider()
+        st.subheader("Verification")
+        st.caption("Upload CSV with address, wave1_bard_wei, wave2_bard_wei columns to verify claims")
+        st.caption("Icons: ✅ = First match, ⚠️ = Duplicate claim, ❌ = Mismatch or not in CSV")
+        csv_file = st.file_uploader("Upload verification CSV", type=["csv"], key="csv_upload")
+
+        if csv_file is not None:
+            try:
+                # Read CSV file
+                csv_content = csv_file.read()
+                df = pd.read_csv(io.StringIO(csv_content.decode('utf-8')))
+
+                # Validate required columns
+                required_cols = ['address', 'wave1_bard_wei', 'wave2_bard_wei']
+                if all(col in df.columns for col in required_cols):
+                    # Process and store verification data
+                    verification_data: dict[str, dict[str, int]] = {}
+                    for _, row in df.iterrows():
+                        addr = str(row['address']).lower()
+                        wave1 = int(row['wave1_bard_wei']) if pd.notna(row['wave1_bard_wei']) else 0
+                        wave2 = int(row['wave2_bard_wei']) if pd.notna(row['wave2_bard_wei']) else 0
+                        verification_data[addr] = {
+                            'wave1_bard_wei': wave1,
+                            'wave2_bard_wei': wave2
+                        }
+
+                    app.verification_data = verification_data
+                    st.success(f"✅ Loaded {len(verification_data)} verification records")
+                else:
+                    st.error(f"❌ CSV must contain columns: {', '.join(required_cols)}")
+                    st.info(f"Found columns: {', '.join(df.columns)}")
+            except Exception as e:
+                st.error(f"❌ Error reading CSV: {str(e)}")
+
+        if app.verification_data:
+            st.info(f"📊 {len(app.verification_data)} addresses loaded for verification")
+            # Show first few addresses for debugging
+            if len(app.verification_data) > 0:
+                sample_addresses = list(app.verification_data.keys())[:3]
+                st.caption(f"Sample addresses: {', '.join(addr[:10] + '...' for addr in sample_addresses)}")
+
+        st.divider()
         # Test controls (replace standard live buttons)
         st.caption("Live controls (tests)")
         live_test_cols = st.columns(2)
@@ -80,6 +124,7 @@ def render_sidebar() -> None:
             app.last_block = 0
             app.live_running = False
             app.last_sync_time = None
+            app.verification_data = {}
 
         if start:
             app.trigger_initial_sync = True

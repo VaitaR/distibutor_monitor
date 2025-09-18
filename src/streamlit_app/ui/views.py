@@ -39,7 +39,7 @@ def render_main() -> None:
 
     # Simple status display
     last_update_text = _format_last_update_time(app.last_sync_time)
-    
+
     if app.live_running:
         refresh_interval = max(5, int(app.poll_interval_ms / 1000))
         col1, col2 = st.columns([3, 1])
@@ -50,7 +50,7 @@ def render_main() -> None:
                 st.rerun()
     else:
         st.info("📊 **Live Mode Stopped**")
-    
+
     # Simple last update display
     if app.last_sync_time:
         st.info(f"🔄 **Last Updated:** {last_update_text}")
@@ -88,6 +88,41 @@ def render_main() -> None:
                 lambda x: float(Decimal(x) / (Decimal(10) ** token_decimals)) if x else 0
             )
 
+        # Add verification check column with duplicate detection
+        claim_count_by_address: dict[str, int] = {}
+
+        def check_verification(row: Any) -> str:
+            if not app.verification_data:
+                return ""
+
+            claimer = str(row.get('claimer', '')).lower()
+            amount_raw = int(row.get('amount_raw', 0))
+
+            # Debug: Show what we're checking
+            # st.write(f"Debug: Checking {claimer} with amount {amount_raw}")
+            # st.write(f"Debug: Available addresses: {list(app.verification_data.keys())[:3]}...")
+
+            if claimer in app.verification_data:
+                expected_wave1 = app.verification_data[claimer]['wave1_bard_wei']
+                expected_wave2 = app.verification_data[claimer]['wave2_bard_wei']
+
+                # Check if amount matches either wave1 or wave2
+                if amount_raw == expected_wave1 or amount_raw == expected_wave2:
+                    # Track how many times this address has matched
+                    claim_count_by_address[claimer] = claim_count_by_address.get(claimer, 0) + 1
+
+                    if claim_count_by_address[claimer] == 1:
+                        return "✅"  # First match
+                    else:
+                        return "⚠️"  # Duplicate match (suspicious)
+                else:
+                    return "❌"  # Amount doesn't match
+            else:
+                # Address not in verification data - show cross
+                return "❌"  # Not in verification CSV
+
+        df_events['Check'] = df_events.apply(check_verification, axis=1)
+
         # Convert timestamp to readable datetime BEFORE converting to strings
         if 'timestamp' in df_events.columns:
             df_events['datetime'] = pd.to_datetime(df_events['timestamp'], unit='s')
@@ -108,8 +143,8 @@ def render_main() -> None:
         # Reorder columns to show converted values first
         cols = list(df_events.columns)
         if 'amount' in cols and 'datetime' in cols:
-            # Put converted columns first
-            priority_cols = ['claimer', 'amount', 'datetime', 'tx_hash', 'block_number', 'log_index']
+            # Put converted columns first, including Check column
+            priority_cols = ['Check', 'claimer', 'amount', 'datetime', 'tx_hash', 'block_number', 'log_index']
             ordered_cols = [col for col in priority_cols if col in cols]
             remaining_cols = [col for col in cols if col not in ordered_cols]
             df_events = df_events[ordered_cols + remaining_cols]

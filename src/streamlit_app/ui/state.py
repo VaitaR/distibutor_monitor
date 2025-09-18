@@ -23,6 +23,7 @@ class AppState:
     trigger_initial_sync: bool = False
     last_sync_time: datetime.datetime | None = None
     trigger_live_test: bool = False
+    verification_data: dict[str, dict[str, int]] = field(default_factory=dict)
 
 
 def ensure_session_state(st: Any) -> AppState:
@@ -37,6 +38,8 @@ def ensure_session_state(st: Any) -> AppState:
         app_state.last_sync_time = None
     if not hasattr(app_state, 'trigger_live_test'):
         app_state.trigger_live_test = False
+    if not hasattr(app_state, 'verification_data'):
+        app_state.verification_data = {}
 
     return app_state
 

@@ -151,31 +151,31 @@ def main() -> None:
 
     # Render main content first
     render_main()
-    
+
     # Live mode with st.empty() approach
     if app.live_running and app.contract_address and app.abi_events:
         selected_events = [e for e in app.abi_events if e.get("name") in app.selected_event_names]
         if selected_events:
             event_abi = selected_events[0]
             refresh_seconds = max(5, int(app.poll_interval_ms / 1000))
-            
+
             # Create placeholder for live updates
             live_placeholder = st.empty()
-            
+
             try:
                 while app.live_running:
                     current_time = datetime.datetime.now()
-                    
+
                     # Check if we need to update
                     should_update = (
-                        app.last_sync_time is None or 
+                        app.last_sync_time is None or
                         (current_time - app.last_sync_time).total_seconds() >= refresh_seconds
                     )
-                    
+
                     if should_update:
                         with live_placeholder.container():
                             st.info("🔄 Updating data...")
-                            
+
                             events, last_block, sync_time = fetch_data_cached(
                                 chain=app.chain,
                                 contract_address=app.contract_address,
@@ -194,7 +194,7 @@ def main() -> None:
                             app.last_block = last_block
                             app.last_sync_time = sync_time
                             new_count = len(events)
-                            
+
                             # Show result
                             if new_count > old_count:
                                 st.success(f"✅ Found {new_count - old_count} new events! Total: {new_count}")
@@ -202,14 +202,15 @@ def main() -> None:
                                 st.info(f"✅ No new events. Total: {new_count}")
                     else:
                         # Show countdown
-                        time_since_last = (current_time - app.last_sync_time).total_seconds()
-                        next_update_in = max(0, refresh_seconds - time_since_last)
-                        with live_placeholder.container():
-                            st.info(f"🔄 Next update in {next_update_in:.0f} seconds...")
-                    
+                        if app.last_sync_time is not None:
+                            time_since_last = (current_time - app.last_sync_time).total_seconds()
+                            next_update_in = max(0, refresh_seconds - time_since_last)
+                            with live_placeholder.container():
+                                st.info(f"🔄 Next update in {next_update_in:.0f} seconds...")
+
                     # Wait before next check
                     time.sleep(1)
-                    
+
             except Exception as exc:
                 st.error(f"Live update failed: {exc}")
                 app.live_running = False
